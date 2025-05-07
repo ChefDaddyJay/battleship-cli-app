@@ -1,8 +1,9 @@
-import { BLUE_DOT, RED_DOT } from "./definitions";
+import { BLUE_DOT, MISS_EMOJI, RED_DOT, type BoardSpace } from "./definitions";
+import rs from "readline-sync";
 
 export class Board {
   board: { [key: string]: BoardSpace[] } = {};
-  ships: number;
+  shipSpaces: number;
   size: number;
   constructor(size: number) {
     const rows = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
@@ -19,7 +20,7 @@ export class Board {
         } as BoardSpace);
       }
     }
-    this.ships = 0;
+    this.shipSpaces = 0;
     this.size = size;
   }
   addShip(
@@ -30,7 +31,7 @@ export class Board {
     dir: "horizontal" | "vertical"
   ) {
     const size = type === "small" ? 2 : 3;
-    const boardSize = Object.entries(this.board).length;
+    const boardSize = this.size;
     let rowNum = Object.keys(this.board).findIndex((key) => key === row);
     const rows = Object.keys(this.board);
 
@@ -63,6 +64,7 @@ export class Board {
         this.board[rows[rowNum + i]!]![col]!.id = id;
       }
     }
+    this.shipSpaces += size;
   }
   populate() {
     let round = this.size;
@@ -98,10 +100,15 @@ export class Board {
     const display: { [key: string]: string[] } = {};
     rows.forEach((row) => {
       display[row[0]] = row[1].map((space) => {
-        if (space.type === "empty") {
-          return "-";
-        } else if (space.hit || debug) {
-          return space.type === "small" ? BLUE_DOT : RED_DOT;
+        if (space.hit || debug) {
+          switch (space.type) {
+            case "empty":
+              return space.hit ? MISS_EMOJI : "-";
+            case "large":
+              return RED_DOT;
+            case "small":
+              return BLUE_DOT;
+          }
         } else {
           return "-";
         }
@@ -109,10 +116,39 @@ export class Board {
     });
     console.table(display);
   }
-}
+  hit(move: string) {
+    const moveRow = move.toUpperCase().match(/[A-Z]/);
+    if (moveRow === null) {
+      throw new Error("Invalid row selector");
+    }
+    const moveCol = move.match(/[\d]/);
+    if (moveCol === null) {
+      throw new Error("Invalid column number");
+    }
+    const row = this.board[moveRow[0]];
+    if (!row) {
+      throw new Error("Row out of range");
+    }
+    const space = row[Number(moveCol[0])]!;
 
-export type BoardSpace = {
-  type: "large" | "small" | "empty";
-  id?: number;
-  hit: boolean;
-};
+    if (space.hit) {
+      throw new Error(`${moveRow[0]}${moveCol[0]} has already been hit.`);
+    }
+    space.hit = true;
+    if (space.type !== "empty") {
+      this.shipSpaces--;
+    }
+  }
+  static getBoard() {
+    while (true) {
+      try {
+        const size = rs.questionInt("Please select a board size (3 - 10): ");
+        const board = new Board(size);
+        board.populate();
+        return board;
+      } catch (error) {
+        console.log("Invalid board size. Please try again.");
+      }
+    }
+  }
+}
