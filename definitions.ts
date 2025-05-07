@@ -14,3 +14,4 @@ export type DisplayBoard = {
 
 export const BLUE_DOT = "\u{1F535}";
 export const RED_DOT = "\u{1F534}";
+export const SHIP_EMOJI = "\u{1F6A2}";
